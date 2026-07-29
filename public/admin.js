@@ -97,6 +97,14 @@
           ? `Đang phát: <strong>${esc(np.name)}</strong>${np.state === 'paused' ? ' (tạm dừng)' : ''}`
           : 'Chưa phát nội dung';
 
+      // Trạng thái tải nội dung về bộ nhớ của thiết bị (phát được khi mất mạng)
+      const cache = screen.cache;
+      const cacheText = screen.online && cache && cache.total
+        ? cache.cached >= cache.total
+          ? `<br>💾 Đã lưu ${cache.cached}/${cache.total} vào máy — mất mạng vẫn phát bình thường`
+          : `<br>⏬ Đang tải về máy: ${cache.cached}/${cache.total}...`
+        : '';
+
       card.innerHTML = `
         <div class="screen-head">
           <span class="status-dot ${screen.online ? 'on' : ''}" title="${screen.online ? 'Đang kết nối' : 'Chưa kết nối'}"></span>
@@ -106,7 +114,7 @@
           <code>${esc(url)}</code>
           <button class="btn btn-sm copy-btn" title="Sao chép liên kết">📋</button>
         </div>
-        <div class="now-playing">${npText}</div>
+        <div class="now-playing">${npText}${cacheText}</div>
         <div class="controls">
           <button class="btn btn-sm" data-cmd="play" title="Phát">▶️</button>
           <button class="btn btn-sm" data-cmd="pause" title="Tạm dừng">⏸️</button>

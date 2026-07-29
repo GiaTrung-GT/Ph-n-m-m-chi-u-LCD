@@ -112,7 +112,8 @@ function publicState() {
     screens: db.screens.map((s) => ({
       ...s,
       online: playersOf(s.id).size > 0,
-      nowPlaying: nowPlaying.get(s.id) || null,
+      nowPlaying: (playerStatus.get(s.id) || {}).nowPlaying || null,
+      cache: (playerStatus.get(s.id) || {}).cache || null,
     })),
     media: db.media,
     addresses: lanAddresses(),
@@ -210,7 +211,7 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 
 const admins = new Set();
 const players = new Map(); // screenId -> Set<ws>
-const nowPlaying = new Map(); // screenId -> { mediaId, name, state }
+const playerStatus = new Map(); // screenId -> { nowPlaying, cache }
 
 function playersOf(screenId) {
   if (!players.has(screenId)) players.set(screenId, new Set());
@@ -263,7 +264,10 @@ wss.on('connection', (ws) => {
     }
 
     if (msg.type === 'status' && ws.role === 'player') {
-      nowPlaying.set(ws.screenId, msg.nowPlaying || null);
+      playerStatus.set(ws.screenId, {
+        nowPlaying: msg.nowPlaying || null,
+        cache: msg.cache || null,
+      });
       broadcastState();
     }
   });
@@ -272,7 +276,7 @@ wss.on('connection', (ws) => {
     if (ws.role === 'admin') admins.delete(ws);
     if (ws.role === 'player') {
       playersOf(ws.screenId).delete(ws);
-      if (playersOf(ws.screenId).size === 0) nowPlaying.delete(ws.screenId);
+      if (playersOf(ws.screenId).size === 0) playerStatus.delete(ws.screenId);
       broadcastState();
     }
   });

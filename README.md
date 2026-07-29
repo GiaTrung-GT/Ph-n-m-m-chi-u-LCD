@@ -86,6 +86,22 @@ Khi màn hình đã kết nối, chấm tròn trên trang quản trị chuyển 
 - **Trạng thái thời gian thực**: biết màn hình nào đang online, đang phát nội dung gì.
 - **Tự phục hồi**: màn hình mất Wi-Fi sẽ tự kết nối lại; playlist được lưu trên máy tính (`data/db.json`), khởi động lại server không mất dữ liệu.
 
+## Màn hình ở nơi sóng yếu (thang máy, tầng hầm...)
+
+Màn hình **tự tải toàn bộ nội dung về bộ nhớ của thiết bị** ngay khi bắt được sóng:
+
+- Khi **mất mạng**, màn hình vẫn phát playlist bình thường từ bộ nhớ — không đứng hình, không màn đen.
+- Khi **có sóng trở lại** (ví dụ thang máy dừng ở tầng có Wi-Fi), màn hình tự kết nối lại và tải nội dung mới bạn vừa thay đổi.
+- Trên trang quản trị có dòng **"💾 Đã lưu x/y vào máy"** — khi đủ số lượng nghĩa là màn hình đó an toàn để mất mạng.
+
+Chỉ cần thiết bị bắt được sóng **thỉnh thoảng** là đủ để nhận nội dung mới. Nếu vị trí đó **hoàn toàn không có sóng**, cần một trong các cách sau:
+
+1. **Đặt bộ phát Wi-Fi gần giếng thang** (repeater/access point đặt ở phòng máy thang hoặc tầng gần nhất) — rẻ và dễ nhất.
+2. **Nhờ kỹ thuật thang máy kéo dây mạng qua cáp hành trình** (traveling cable) của thang — ổn định nhất.
+3. **Gắn router 4G có SIM data** ngay trong cabin thang máy.
+
+Lưu ý: nếu thiết bị trong thang **bị mất điện và khởi động lại đúng lúc không có sóng**, nó cần bắt được sóng một lần để mở lại trang (nội dung thì đã có sẵn trong bộ nhớ). Dùng ứng dụng **Fully Kiosk Browser** trên Android box — ứng dụng này tự mở lại trang và tự thử lại liên tục đến khi có sóng.
+
 ## Mẹo vận hành
 
 - **Giữ máy tính không ngủ** khi đang trình chiếu (màn hình lấy nội dung trực tiếp từ máy tính): tắt chế độ Sleep trong cài đặt nguồn điện.

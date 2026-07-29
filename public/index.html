@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Điều khiển trình chiếu</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🖥️</text></svg>">
+  <link rel="stylesheet" href="/admin.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <h1>🖥️ Điều khiển trình chiếu</h1>
+      <div id="serverInfo" class="server-info"></div>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <h2>Màn hình</h2>
+      <div id="screens" class="screens-grid"></div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>Thư viện nội dung</h2>
+        <label class="btn btn-primary upload-btn">
+          ⬆️ Tải video / ảnh lên
+          <input type="file" id="fileInput" multiple accept="video/*,image/*" hidden>
+        </label>
+      </div>
+      <div id="uploadProgress" class="upload-progress hidden">
+        <div class="bar"><div id="uploadBar" class="bar-fill"></div></div>
+        <span id="uploadLabel"></span>
+      </div>
+      <div id="dropZone" class="drop-zone">Kéo thả file video / ảnh vào đây để tải lên</div>
+      <div id="mediaGrid" class="media-grid"></div>
+    </section>
+  </main>
+
+  <script src="/admin.js"></script>
+</body>
+</html>

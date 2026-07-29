@@ -27,6 +27,9 @@
         state = msg.state;
         render();
       }
+      if (msg.type === 'error' && msg.error === 'auth') {
+        location.reload(); // phiên đăng nhập hết hạn -> quay về trang đăng nhập
+      }
     };
     ws.onclose = () => setTimeout(connect, 3000);
     ws.onerror = () => ws.close();

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng nhập - Điều khiển trình chiếu</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🖥️</text></svg>">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: #0f1420;
+      color: #e8ecf5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .box {
+      background: #1a2233;
+      border: 1px solid #2e3a55;
+      border-radius: 14px;
+      padding: 32px;
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      text-align: center;
+    }
+    h1 { font-size: 20px; }
+    p { font-size: 14px; color: #8a94ab; }
+    input {
+      background: #232e45;
+      border: 1px solid #2e3a55;
+      color: #e8ecf5;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 15px;
+      width: 100%;
+    }
+    input:focus { outline: none; border-color: #3b82f6; }
+    button {
+      background: #3b82f6;
+      border: none;
+      color: #fff;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: #2563eb; }
+    .err { color: #ef4444; font-size: 13px; min-height: 18px; }
+  </style>
+</head>
+<body>
+  <form class="box" id="form">
+    <h1>🖥️ Điều khiển trình chiếu</h1>
+    <p>Nhập mật khẩu quản trị để tiếp tục</p>
+    <input type="password" id="password" placeholder="Mật khẩu" autofocus autocomplete="current-password">
+    <div class="err" id="err"></div>
+    <button type="submit">Đăng nhập</button>
+  </form>
+  <script>
+    document.getElementById('form').onsubmit = async (e) => {
+      e.preventDefault();
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: document.getElementById('password').value }),
+      });
+      if (res.ok) location.href = '/';
+      else document.getElementById('err').textContent = 'Sai mật khẩu, vui lòng thử lại';
+    };
+  </script>
+</body>
+</html>

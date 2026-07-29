@@ -86,6 +86,32 @@ Khi màn hình đã kết nối, chấm tròn trên trang quản trị chuyển 
 - **Trạng thái thời gian thực**: biết màn hình nào đang online, đang phát nội dung gì.
 - **Tự phục hồi**: màn hình mất Wi-Fi sẽ tự kết nối lại; playlist được lưu trên máy tính (`data/db.json`), khởi động lại server không mất dữ liệu.
 
+## Màn hình ở xa, không chung Wi-Fi với máy tính
+
+Khi màn hình đặt ở tòa nhà khác / chi nhánh khác, không thể chung mạng với máy tính, có 2 cách:
+
+### Cách 1 (khuyên dùng): Đưa server lên Internet — màn hình ở đâu cũng điều khiển được
+
+Thay vì chạy server trên máy tính của bạn, thuê một "máy tính trên mây" chạy 24/7 (~150–200k/tháng). Khi đó:
+
+- Mỗi màn hình chỉ cần **có Internet là được** — Wi-Fi của tòa nhà đó, hoặc cắm router 4G có SIM, không liên quan gì đến mạng của bạn.
+- Bạn mở trang quản trị **từ bất kỳ đâu**, kể cả trên điện thoại.
+- Không cần giữ máy tính bật — server trên mây chạy suốt.
+
+Các bước với [Render.com](https://render.com) (dự án đã có sẵn file cấu hình `render.yaml`):
+
+1. Tạo tài khoản GitHub (nếu chưa có) và đưa code này lên tài khoản của bạn.
+2. Vào **render.com** → đăng ký bằng tài khoản GitHub → **New + → Blueprint** → chọn repository này.
+3. Render hỏi **ADMIN_PASSWORD** → tự đặt một mật khẩu (đây là mật khẩu mở trang quản trị — khi server ở trên Internet bắt buộc phải có).
+4. Bấm tạo, đợi vài phút → bạn nhận địa chỉ dạng `https://phan-mem-chieu-lcd.onrender.com`.
+5. Trên các màn hình mở `https://.../screen/s1` (s2, s3, s4). Trên máy/điện thoại của bạn mở `https://.../` và đăng nhập.
+
+> Gói Starter của Render (~7$/tháng) kèm ổ cứng lưu video. Có thể dùng nhà cung cấp VPS Việt Nam (Vietnix, AZDIGI...) nếu muốn thanh toán nội địa — chạy bằng Docker với file `Dockerfile` có sẵn, nhớ đặt biến `ADMIN_PASSWORD`.
+
+### Cách 2 (miễn phí): Tailscale — nối máy tính và màn hình thành "mạng ảo" chung
+
+Nếu vẫn muốn dùng máy tính của bạn làm server: cài ứng dụng **Tailscale** (miễn phí) trên máy tính và trên từng Android box của màn hình, đăng nhập cùng một tài khoản Google. Mọi thiết bị sẽ "nhìn thấy nhau" như chung một mạng dù ở hai đầu thành phố. Màn hình mở link qua địa chỉ Tailscale của máy tính (dạng `http://100.x.x.x:3000/screen/s1`). Nhược điểm: máy tính phải bật thì màn hình mới nhận được nội dung mới (nội dung đã tải về thì vẫn phát).
+
 ## Màn hình ở nơi sóng yếu (thang máy, tầng hầm...)
 
 Màn hình **tự tải toàn bộ nội dung về bộ nhớ của thiết bị** ngay khi bắt được sóng:

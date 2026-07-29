@@ -17,11 +17,56 @@ const multer = require('multer');
 const { WebSocketServer } = require('ws');
 
 const PORT = process.env.PORT || 3000;
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
 
+// Đặt biến môi trường ADMIN_PASSWORD để bật đăng nhập cho trang quản trị.
+// BẮT BUỘC đặt khi chạy server trên Internet; trong mạng LAN nhà/cửa hàng
+// có thể bỏ trống để dùng không cần mật khẩu.
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+// ---------------------------------------------------------------------------
+// Đăng nhập trang quản trị (cookie ký bằng khóa bí mật lưu trong data/)
+// ---------------------------------------------------------------------------
+
+const SECRET_FILE = path.join(DATA_DIR, '.secret');
+let secret;
+try {
+  secret = fs.readFileSync(SECRET_FILE, 'utf8').trim();
+  if (!secret) throw new Error('trống');
+} catch {
+  secret = crypto.randomBytes(32).toString('hex');
+  fs.writeFileSync(SECRET_FILE, secret);
+}
+
+function adminToken() {
+  return crypto.createHmac('sha256', secret).update(`admin:${ADMIN_PASSWORD}`).digest('hex');
+}
+
+function parseCookies(req) {
+  const out = {};
+  for (const part of (req.headers.cookie || '').split(';')) {
+    const i = part.indexOf('=');
+    if (i > 0) out[part.slice(0, i).trim()] = part.slice(i + 1).trim();
+  }
+  return out;
+}
+
+function isAdmin(req) {
+  if (!ADMIN_PASSWORD) return true;
+  const token = parseCookies(req).auth || '';
+  const expected = adminToken();
+  return token.length === expected.length &&
+    crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+}
+
+function requireAdmin(req, res, next) {
+  if (isAdmin(req)) return next();
+  res.status(401).json({ error: 'Chưa đăng nhập' });
+}
 
 // ---------------------------------------------------------------------------
 // Cơ sở dữ liệu (file JSON đơn giản)
@@ -90,6 +135,23 @@ const upload = multer({
 
 const app = express();
 app.use(express.json());
+
+// Trang quản trị yêu cầu đăng nhập (khi có đặt ADMIN_PASSWORD)
+app.get(['/', '/index.html'], (req, res, next) => {
+  if (!isAdmin(req)) return res.sendFile(path.join(__dirname, 'public', 'login.html'));
+  next();
+});
+
+app.post('/api/login', (req, res) => {
+  const { password } = req.body || {};
+  if (!ADMIN_PASSWORD || password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Sai mật khẩu' });
+  }
+  res.setHeader('Set-Cookie',
+    `auth=${adminToken()}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${90 * 24 * 3600}`);
+  res.json({ ok: true });
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/media', express.static(UPLOAD_DIR));
 
@@ -121,10 +183,10 @@ function publicState() {
   };
 }
 
-app.get('/api/state', (req, res) => res.json(publicState()));
+app.get('/api/state', requireAdmin, (req, res) => res.json(publicState()));
 
 // Cập nhật cấu hình / playlist của một màn hình
-app.post('/api/screens/:id', (req, res) => {
+app.post('/api/screens/:id', requireAdmin, (req, res) => {
   const screen = findScreen(req.params.id);
   if (!screen) return res.status(404).json({ error: 'Không tìm thấy màn hình' });
 
@@ -145,7 +207,7 @@ app.post('/api/screens/:id', (req, res) => {
 });
 
 // Gửi lệnh điều khiển tới màn hình: play | pause | stop | next | prev | reload | playNow
-app.post('/api/screens/:id/command', (req, res) => {
+app.post('/api/screens/:id/command', requireAdmin, (req, res) => {
   const screen = findScreen(req.params.id);
   if (!screen) return res.status(404).json({ error: 'Không tìm thấy màn hình' });
 
@@ -163,7 +225,7 @@ app.post('/api/screens/:id/command', (req, res) => {
   res.json({ ok: true, delivered: playersOf(screen.id).size });
 });
 
-app.post('/api/media', upload.array('files', 20), (req, res) => {
+app.post('/api/media', requireAdmin, upload.array('files', 20), (req, res) => {
   const added = (req.files || []).map((f) => ({
     id: path.parse(f.filename).name,
     name: Buffer.from(f.originalname, 'latin1').toString('utf8'),
@@ -179,7 +241,7 @@ app.post('/api/media', upload.array('files', 20), (req, res) => {
   res.json({ ok: true, added });
 });
 
-app.delete('/api/media/:id', (req, res) => {
+app.delete('/api/media/:id', requireAdmin, (req, res) => {
   const idx = db.media.findIndex((m) => m.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Không tìm thấy nội dung' });
 
@@ -240,8 +302,9 @@ function pushConfig(screenId) {
   sendToPlayers(screenId, { type: 'config', screen, playlist });
 }
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
   ws.isAlive = true;
+  ws.isAdminAuthed = isAdmin(req);
   ws.on('pong', () => { ws.isAlive = true; });
 
   ws.on('message', (raw) => {
@@ -256,6 +319,11 @@ wss.on('connection', (ws) => {
         pushConfig(msg.screenId);
         broadcastState();
       } else if (msg.role === 'admin') {
+        if (!ws.isAdminAuthed) {
+          send(ws, { type: 'error', error: 'auth' });
+          ws.close();
+          return;
+        }
         ws.role = 'admin';
         admins.add(ws);
         send(ws, { type: 'state', state: publicState() });

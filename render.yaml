@@ -1,0 +1,20 @@
+# Cấu hình triển khai lên Render.com — dịch vụ cloud, giúp màn hình ở bất kỳ
+# đâu có Internet đều kết nối được (không cần chung Wi-Fi với máy tính).
+#
+# Cách dùng: đăng nhập render.com bằng tài khoản GitHub -> New + -> Blueprint
+# -> chọn repository này -> Render tự đọc file này và dựng server.
+# Sau khi tạo xong, vào Environment đặt ADMIN_PASSWORD (mật khẩu trang quản trị).
+services:
+  - type: web
+    name: phan-mem-chieu-lcd
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: ADMIN_PASSWORD
+        sync: false # Render sẽ hỏi bạn nhập mật khẩu khi tạo dịch vụ
+    disk:
+      name: du-lieu-media
+      mountPath: /opt/render/project/src/data
+      sizeGB: 10

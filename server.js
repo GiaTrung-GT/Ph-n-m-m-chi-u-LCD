@@ -159,6 +159,11 @@ app.get('/screen/:id', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'player.html'));
 });
 
+// Link rút gọn để gõ trên TV cho nhanh: /s1 -> /screen/s1
+app.get(/^\/(s\d+)$/, (req, res) => {
+  res.redirect(`/screen/${req.params[0]}`);
+});
+
 function lanAddresses() {
   const out = [];
   for (const ifaces of Object.values(os.networkInterfaces())) {

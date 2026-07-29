@@ -2,6 +2,18 @@
 
 Nền tảng giúp bạn **trình chiếu video/ảnh lên nhiều màn hình LCD và TV cùng lúc, điều khiển hoàn toàn từ máy tính** — không cần chép file bằng USB nữa.
 
+## 🚀 Dành cho người mới — không cần biết code
+
+Chỉ cần làm 3 bước, mỗi bước 1 lần duy nhất:
+
+1. **Tải phần mềm này về máy**: trên trang GitHub bấm nút xanh **Code → Download ZIP**, tải về rồi **giải nén** (chuột phải → Extract All).
+2. **Cài Node.js** (nền tảng để chạy phần mềm): vào [nodejs.org](https://nodejs.org), bấm nút xanh tải về, cài đặt kiểu Next → Next → Install.
+3. **Nháy đúp chuột vào file `CHAY-TREN-WINDOWS.bat`** trong thư mục vừa giải nén (trên máy Mac thì mở file `chay-tren-mac.command`).
+
+Một cửa sổ đen hiện ra và trình duyệt **tự mở trang quản trị**. Xong!
+
+> ⚠️ Những lần sau chỉ cần làm bước 3. **Đừng đóng cửa sổ đen** khi đang trình chiếu — đóng nó là các màn hình ngừng phát. Nếu Windows hỏi về tường lửa (Firewall), bấm **Allow access / Cho phép**.
+
 ## Cách hoạt động
 
 ```

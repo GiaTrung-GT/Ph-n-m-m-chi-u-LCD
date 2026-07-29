@@ -45,6 +45,14 @@ h1 { font-size: 20px; }
   border-radius: 6px;
   color: var(--text);
 }
+.server-info select {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+}
 
 main {
   max-width: 1280px;

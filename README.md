@@ -110,7 +110,17 @@ Các bước với [Render.com](https://render.com) (dự án đã có sẵn fil
 
 ### Cách 2 (miễn phí): Tailscale — nối máy tính và màn hình thành "mạng ảo" chung
 
-Nếu vẫn muốn dùng máy tính của bạn làm server: cài ứng dụng **Tailscale** (miễn phí) trên máy tính và trên từng Android box của màn hình, đăng nhập cùng một tài khoản Google. Mọi thiết bị sẽ "nhìn thấy nhau" như chung một mạng dù ở hai đầu thành phố. Màn hình mở link qua địa chỉ Tailscale của máy tính (dạng `http://100.x.x.x:3000/screen/s1`). Nhược điểm: máy tính phải bật thì màn hình mới nhận được nội dung mới (nội dung đã tải về thì vẫn phát).
+Hoàn toàn miễn phí, không cần thuê server, **không cần mật khẩu** (mạng ảo là riêng tư, chỉ thiết bị bạn đăng nhập mới vào được). Máy tính của bạn vẫn là server như bình thường.
+
+1. **Trên máy tính**: vào [tailscale.com/download](https://tailscale.com/download) → tải và cài Tailscale → đăng nhập bằng tài khoản Google của bạn.
+2. **Trên từng Android box** của màn hình: mở **CH Play** → cài ứng dụng **Tailscale** → đăng nhập **cùng tài khoản Google đó** → bật công tắc kết nối (Connect/VPN).
+3. Mở phần mềm chiếu trên máy tính như bình thường (`CHAY-TREN-WINDOWS.bat`). Trên trang quản trị, ô chọn địa chỉ ở góc phải sẽ có thêm dòng **"100.x.x.x (Tailscale — cho màn hình ở xa)"** — chọn nó, link của từng màn hình sẽ đổi theo, bấm 📋 sao chép.
+4. Trên màn hình ở xa, mở trình duyệt và vào link đó (dạng `http://100.x.x.x:3000/screen/s1`). Xong — dù màn hình ở tòa nhà khác, thành phố khác vẫn kết nối được.
+
+Lưu ý:
+- Máy tính phải **đang bật** thì màn hình mới nhận được nội dung **mới**; nội dung đã tải về bộ nhớ thì mất kết nối vẫn phát bình thường.
+- Trình duyệt có sẵn của Smart TV **không cài được Tailscale** — màn hình ở xa cần chạy bằng Android box (mua 1 lần ~300–500k, không tốn phí hằng tháng).
+- Gói miễn phí của Tailscale cho tối đa 100 thiết bị — quá đủ cho 4 màn hình.
 
 ## Màn hình ở nơi sóng yếu (thang máy, tầng hầm...)
 

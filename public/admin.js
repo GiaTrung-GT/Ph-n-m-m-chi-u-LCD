@@ -57,9 +57,21 @@
   // Hiển thị
   // ------------------------------------------------------------------
 
+  // Máy tính có thể có nhiều địa chỉ (Wi-Fi nội bộ, Tailscale...) — cho phép
+  // chọn địa chỉ dùng để tạo link màn hình, lưu lựa chọn vào trình duyệt
+  function addrLabel(a) {
+    if (a.startsWith('100.')) return `${a} (Tailscale — cho màn hình ở xa)`;
+    return `${a} (Wi-Fi / mạng nội bộ)`;
+  }
+
+  function chosenAddress() {
+    const saved = localStorage.getItem('baseAddr');
+    if (saved && state.addresses.includes(saved)) return saved;
+    return state.addresses[0] || location.hostname;
+  }
+
   function baseUrl() {
-    const host = state.addresses[0] || location.hostname;
-    return `http://${host}:${state.port}`;
+    return `http://${chosenAddress()}:${state.port}`;
   }
 
   function render() {
@@ -67,9 +79,21 @@
     if (document.activeElement && ['INPUT', 'SELECT'].includes(document.activeElement.tagName)) {
       return;
     }
-    serverInfo.innerHTML = state.addresses.length
-      ? `Địa chỉ trong mạng LAN: <code>${baseUrl()}</code>`
-      : '';
+    if (state.addresses.length > 1) {
+      serverInfo.innerHTML = `Tạo link màn hình theo địa chỉ:
+        <select id="addrSelect">${state.addresses.map((a) =>
+          `<option value="${esc(a)}" ${a === chosenAddress() ? 'selected' : ''}>${esc(addrLabel(a))}</option>`).join('')}
+        </select>`;
+      serverInfo.querySelector('#addrSelect').onchange = (e) => {
+        localStorage.setItem('baseAddr', e.target.value);
+        e.target.blur();
+        render();
+      };
+    } else {
+      serverInfo.innerHTML = state.addresses.length
+        ? `Địa chỉ trong mạng LAN: <code>${baseUrl()}</code>`
+        : '';
+    }
     renderScreens();
     renderMedia();
   }

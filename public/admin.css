@@ -146,6 +146,7 @@ h2 { font-size: 17px; margin-bottom: 14px; }
   padding: 8px 10px;
 }
 .now-playing strong { color: var(--text); }
+.now-playing .cache-error { color: var(--amber); }
 
 .controls {
   display: flex;

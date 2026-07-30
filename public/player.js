@@ -66,13 +66,84 @@
   const cachedIds = new Set();
   const objectUrls = new Map();
   let syncing = false;
+  let downloadInfo = null; // { name, percent } — file đang tải dở
+  let downloadError = null; // thông báo lỗi tải gần nhất, hiện trên trang quản trị
+
+  // File được tải về theo từng mảnh nhỏ và lưu ngay: đứt mạng giữa chừng
+  // thì lần sau tải TIẾP từ mảnh dở, không phải tải lại từ đầu (quan trọng
+  // với video lớn ở nơi sóng yếu). Khóa trong kho: '<id>' = file hoàn chỉnh,
+  // '<id>:c<n>' = mảnh thứ n, '<id>:progress' = số byte đã tải.
+  const CHUNK = 4 * 1024 * 1024;
 
   async function initCache() {
     try {
       // Xin trình duyệt giữ dữ liệu lâu dài, không tự xóa khi đầy bộ nhớ
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
-      for (const k of await store.keys()) cachedIds.add(k);
+      for (const k of await store.keys()) {
+        if (!String(k).includes(':')) cachedIds.add(k);
+      }
     } catch { /* thiết bị không hỗ trợ thì phát trực tiếp qua mạng */ }
+  }
+
+  async function deleteChunks(id, totalSize) {
+    const n = Math.ceil((totalSize || 0) / CHUNK) + 1;
+    for (let i = 0; i < n; i++) await store.del(`${id}:c${i}`).catch(() => {});
+    await store.del(`${id}:progress`).catch(() => {});
+  }
+
+  async function downloadMedia(media) {
+    // Không biết kích thước (dữ liệu cũ) thì tải cả file một lần
+    if (!media.size) {
+      const res = await fetch(media.url);
+      if (!res.ok) throw new Error(`Máy chủ trả về lỗi ${res.status}`);
+      await store.put(media.id, await res.blob());
+      return;
+    }
+
+    // Kiểm tra bộ nhớ thiết bị còn đủ chỗ không trước khi tải
+    if (navigator.storage && navigator.storage.estimate) {
+      try {
+        const est = await navigator.storage.estimate();
+        const free = (est.quota || 0) - (est.usage || 0);
+        if (est.quota && media.size > free) {
+          throw new Error(`Bộ nhớ thiết bị không đủ (file ${fmtMB(media.size)}, chỉ còn trống ${fmtMB(free)}) — hãy nén video nhỏ lại hoặc bớt nội dung`);
+        }
+      } catch (e) {
+        if (String(e.message).startsWith('Bộ nhớ')) throw e;
+      }
+    }
+
+    let offset = (await store.get(`${media.id}:progress`)) || 0;
+    while (offset < media.size) {
+      const end = Math.min(offset + CHUNK, media.size) - 1;
+      const res = await fetch(media.url, { headers: { Range: `bytes=${offset}-${end}` } });
+      if (res.status === 200) {
+        // Máy chủ không hỗ trợ tải từng phần: nhận cả file một lần
+        await store.put(media.id, await res.blob());
+        await deleteChunks(media.id, media.size);
+        return;
+      }
+      if (res.status !== 206) throw new Error(`Máy chủ trả về lỗi ${res.status}`);
+      const part = await res.blob();
+      await store.put(`${media.id}:c${Math.floor(offset / CHUNK)}`, part);
+      offset += part.size;
+      await store.put(`${media.id}:progress`, offset);
+      downloadInfo = { name: media.name, percent: Math.round((offset / media.size) * 100) };
+      reportStatus();
+    }
+
+    // Đủ mảnh — ghép lại thành file hoàn chỉnh (Blob ghép không tốn RAM)
+    const parts = [];
+    for (let i = 0; i < Math.ceil(media.size / CHUNK); i++) {
+      const part = await store.get(`${media.id}:c${i}`);
+      if (!part) {
+        await deleteChunks(media.id, media.size);
+        throw new Error('Dữ liệu tải dở bị hỏng, sẽ tải lại từ đầu');
+      }
+      parts.push(part);
+    }
+    await store.put(media.id, new Blob(parts, { type: media.mime }));
+    await deleteChunks(media.id, media.size);
   }
 
   // Tải lần lượt các file chưa có về bộ nhớ; xóa file không còn trong playlist
@@ -80,27 +151,41 @@
     if (syncing) return;
     syncing = true;
     try {
+      // Dọn file (và mảnh tải dở) không còn thuộc playlist
       const wanted = new Set(playlist.map((m) => m.id));
-      for (const id of [...cachedIds]) {
-        if (!wanted.has(id)) {
-          await store.del(id);
-          cachedIds.delete(id);
-          const u = objectUrls.get(id);
-          if (u) { URL.revokeObjectURL(u); objectUrls.delete(id); }
+      for (const k of await store.keys().catch(() => [])) {
+        const baseId = String(k).split(':')[0];
+        if (!wanted.has(baseId)) {
+          await store.del(k);
+          cachedIds.delete(baseId);
+          const u = objectUrls.get(baseId);
+          if (u) { URL.revokeObjectURL(u); objectUrls.delete(baseId); }
         }
       }
       for (const media of playlist) {
         if (cachedIds.has(media.id)) continue;
-        const res = await fetch(media.url);
-        if (!res.ok) continue;
-        const blob = await res.blob();
-        await store.put(media.id, blob);
-        cachedIds.add(media.id);
+        try {
+          downloadInfo = { name: media.name, percent: 0 };
+          reportStatus();
+          await downloadMedia(media);
+          cachedIds.add(media.id);
+          downloadError = null;
+        } catch (e) {
+          // Ghi rõ lý do để hiện trên trang quản trị, rồi tải file kế tiếp
+          downloadError = `${media.name}: ${e.message === 'Failed to fetch' ? 'mất kết nối khi đang tải, sẽ tự thử lại' : e.message}`;
+        }
+        downloadInfo = null;
         reportStatus();
       }
-    } catch { /* mất mạng giữa chừng — sẽ thử lại bên dưới */ }
+    } catch { /* lỗi kho lưu trữ — thiết bị vẫn phát trực tiếp qua mạng */ }
+    downloadInfo = null;
     syncing = false;
+    reportStatus();
     if (playlist.some((m) => !cachedIds.has(m.id))) setTimeout(syncCache, 30000);
+  }
+
+  function fmtMB(bytes) {
+    return bytes > 1e9 ? (bytes / 1e9).toFixed(1) + ' GB' : Math.round(bytes / 1e6) + ' MB';
   }
 
   // Ưu tiên phát từ bộ nhớ thiết bị, chưa có thì phát trực tiếp từ server
@@ -167,6 +252,8 @@
       cache: {
         cached: playlist.filter((m) => cachedIds.has(m.id)).length,
         total: playlist.length,
+        downloading: downloadInfo,
+        error: downloadError,
       },
     }));
   }

@@ -126,11 +126,19 @@
 
       // Trạng thái tải nội dung về bộ nhớ của thiết bị (phát được khi mất mạng)
       const cache = screen.cache;
-      const cacheText = screen.online && cache && cache.total
-        ? cache.cached >= cache.total
-          ? `<br>💾 Đã lưu ${cache.cached}/${cache.total} vào máy — mất mạng vẫn phát bình thường`
-          : `<br>⏬ Đang tải về máy: ${cache.cached}/${cache.total}...`
-        : '';
+      let cacheText = '';
+      if (screen.online && cache && cache.total) {
+        if (cache.cached >= cache.total) {
+          cacheText = `<br>💾 Đã lưu ${cache.cached}/${cache.total} vào máy — mất mạng vẫn phát bình thường`;
+        } else if (cache.downloading) {
+          cacheText = `<br>⏬ Đang tải "${esc(cache.downloading.name)}": ${cache.downloading.percent}% (xong ${cache.cached}/${cache.total} file)`;
+        } else {
+          cacheText = `<br>⏬ Đang tải về máy: ${cache.cached}/${cache.total}...`;
+        }
+        if (cache.error) {
+          cacheText += `<br><span class="cache-error">⚠️ ${esc(cache.error)}</span>`;
+        }
+      }
 
       card.innerHTML = `
         <div class="screen-head">

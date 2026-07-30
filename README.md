@@ -129,6 +129,7 @@ Màn hình **tự tải toàn bộ nội dung về bộ nhớ của thiết bị
 - Khi **mất mạng**, màn hình vẫn phát playlist bình thường từ bộ nhớ — không đứng hình, không màn đen.
 - Khi **có sóng trở lại** (ví dụ thang máy dừng ở tầng có Wi-Fi), màn hình tự kết nối lại và tải nội dung mới bạn vừa thay đổi.
 - Trên trang quản trị có dòng **"💾 Đã lưu x/y vào máy"** — khi đủ số lượng nghĩa là màn hình đó an toàn để mất mạng.
+- File được tải theo **từng mảnh nhỏ 4MB**: đứt mạng giữa chừng thì lần sau tự **tải tiếp từ chỗ dừng**, không phải tải lại từ đầu — video lớn vẫn về đích dù sóng chập chờn. Trang quản trị hiện phần trăm đang tải của từng file, và hiện rõ lý do nếu tải lỗi (ví dụ bộ nhớ thiết bị không đủ).
 
 Chỉ cần thiết bị bắt được sóng **thỉnh thoảng** là đủ để nhận nội dung mới. Nếu vị trí đó **hoàn toàn không có sóng**, cần một trong các cách sau:
 

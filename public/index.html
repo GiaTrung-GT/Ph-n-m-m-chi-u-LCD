@@ -24,10 +24,13 @@
     <section>
       <div class="section-head">
         <h2>Thư viện nội dung</h2>
-        <label class="btn btn-primary upload-btn">
-          ⬆️ Tải video / ảnh lên
-          <input type="file" id="fileInput" multiple accept="video/*,image/*" hidden>
-        </label>
+        <div class="section-actions">
+          <button class="btn btn-danger" id="deleteAllBtn" title="Xóa toàn bộ video/ảnh và làm trống playlist của mọi màn hình">🗑️ Xóa tất cả</button>
+          <label class="btn btn-primary upload-btn">
+            ⬆️ Tải video / ảnh lên
+            <input type="file" id="fileInput" multiple accept="video/*,image/*" hidden>
+          </label>
+        </div>
       </div>
       <div id="uploadProgress" class="upload-progress hidden">
         <div class="bar"><div id="uploadBar" class="bar-fill"></div></div>

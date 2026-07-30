@@ -356,6 +356,13 @@
     fileInput.value = '';
   };
 
+  $('#deleteAllBtn').onclick = () => {
+    if (!state.media.length) { toast('Thư viện đang trống'); return; }
+    if (confirm(`Xóa TOÀN BỘ ${state.media.length} video/ảnh và làm trống playlist của mọi màn hình?\nCác màn hình sẽ tự dọn nội dung đã lưu. Không thể hoàn tác.`)) {
+      api('/api/media', { method: 'DELETE' }).then(() => toast('Đã xóa toàn bộ thư viện'));
+    }
+  };
+
   dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('dragover'); };
   dropZone.ondragleave = () => dropZone.classList.remove('dragover');
   dropZone.ondrop = (e) => {

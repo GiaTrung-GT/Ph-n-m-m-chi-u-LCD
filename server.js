@@ -247,6 +247,22 @@ app.post('/api/media', requireAdmin, upload.array('files', 20), (req, res) => {
   res.json({ ok: true, added });
 });
 
+// Xóa toàn bộ thư viện: gỡ mọi file và làm trống playlist của tất cả màn hình
+// (các màn hình nhận playlist trống sẽ tự dọn nội dung đã lưu trong thiết bị)
+app.delete('/api/media', requireAdmin, (req, res) => {
+  for (const media of db.media) {
+    fs.unlink(path.join(UPLOAD_DIR, path.basename(media.url)), () => {});
+  }
+  db.media = [];
+  for (const screen of db.screens) {
+    screen.playlist = [];
+    pushConfig(screen.id);
+  }
+  saveDb();
+  broadcastState();
+  res.json({ ok: true });
+});
+
 app.delete('/api/media/:id', requireAdmin, (req, res) => {
   const idx = db.media.findIndex((m) => m.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'Không tìm thấy nội dung' });

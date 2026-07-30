@@ -71,8 +71,13 @@
 
   // File được tải về theo từng mảnh nhỏ và lưu ngay: đứt mạng giữa chừng
   // thì lần sau tải TIẾP từ mảnh dở, không phải tải lại từ đầu (quan trọng
-  // với video lớn ở nơi sóng yếu). Khóa trong kho: '<id>' = file hoàn chỉnh,
-  // '<id>:c<n>' = mảnh thứ n, '<id>:progress' = số byte đã tải.
+  // với video lớn ở nơi sóng yếu). Các mảnh chính là nơi lưu trữ lâu dài —
+  // khi phát sẽ xâu chuỗi mảnh lại (Blob ghép chỉ tham chiếu, không tốn
+  // thêm dung lượng hay thời gian). Khóa trong kho:
+  //   '<id>'          = file nguyên khối (dữ liệu bản cũ / server không hỗ trợ Range)
+  //   '<id>:c<n>'     = mảnh thứ n
+  //   '<id>:progress' = số byte đã tải (đang tải dở)
+  //   '<id>:done'     = số mảnh, đánh dấu đã tải đủ
   const CHUNK = 4 * 1024 * 1024;
 
   async function initCache() {
@@ -80,7 +85,9 @@
       // Xin trình duyệt giữ dữ liệu lâu dài, không tự xóa khi đầy bộ nhớ
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
       for (const k of await store.keys()) {
-        if (!String(k).includes(':')) cachedIds.add(k);
+        const key = String(k);
+        if (!key.includes(':')) cachedIds.add(key);
+        else if (key.endsWith(':done')) cachedIds.add(key.slice(0, -':done'.length));
       }
     } catch { /* thiết bị không hỗ trợ thì phát trực tiếp qua mạng */ }
   }
@@ -89,6 +96,7 @@
     const n = Math.ceil((totalSize || 0) / CHUNK) + 1;
     for (let i = 0; i < n; i++) await store.del(`${id}:c${i}`).catch(() => {});
     await store.del(`${id}:progress`).catch(() => {});
+    await store.del(`${id}:done`).catch(() => {});
   }
 
   async function downloadMedia(media) {
@@ -114,6 +122,10 @@
     }
 
     let offset = (await store.get(`${media.id}:progress`)) || 0;
+    // Báo ngay phần trăm đang có (mở lại trang giữa chừng vẫn hiện đúng %)
+    downloadInfo = { name: media.name, percent: Math.round((offset / media.size) * 100) };
+    reportStatus();
+
     while (offset < media.size) {
       const end = Math.min(offset + CHUNK, media.size) - 1;
       const res = await fetch(media.url, { headers: { Range: `bytes=${offset}-${end}` } });
@@ -132,18 +144,9 @@
       reportStatus();
     }
 
-    // Đủ mảnh — ghép lại thành file hoàn chỉnh (Blob ghép không tốn RAM)
-    const parts = [];
-    for (let i = 0; i < Math.ceil(media.size / CHUNK); i++) {
-      const part = await store.get(`${media.id}:c${i}`);
-      if (!part) {
-        await deleteChunks(media.id, media.size);
-        throw new Error('Dữ liệu tải dở bị hỏng, sẽ tải lại từ đầu');
-      }
-      parts.push(part);
-    }
-    await store.put(media.id, new Blob(parts, { type: media.mime }));
-    await deleteChunks(media.id, media.size);
+    // Đủ mảnh — chỉ cần đánh dấu hoàn tất, các mảnh là nơi lưu lâu dài
+    await store.put(`${media.id}:done`, Math.ceil(media.size / CHUNK));
+    await store.del(`${media.id}:progress`).catch(() => {});
   }
 
   // Tải lần lượt các file chưa có về bộ nhớ; xóa file không còn trong playlist
@@ -192,13 +195,31 @@
   async function srcFor(media) {
     if (objectUrls.has(media.id)) return objectUrls.get(media.id);
     try {
+      // File nguyên khối (dữ liệu bản cũ hoặc file không rõ kích thước)
       const blob = await store.get(media.id);
       if (blob) {
         const u = URL.createObjectURL(blob);
         objectUrls.set(media.id, u);
         return u;
       }
-    } catch {}
+      // File dạng mảnh: xâu chuỗi các mảnh lại (chỉ tham chiếu, rất nhanh)
+      const chunkCount = await store.get(`${media.id}:done`);
+      if (chunkCount) {
+        const parts = [];
+        for (let i = 0; i < chunkCount; i++) {
+          const part = await store.get(`${media.id}:c${i}`);
+          if (!part) throw new Error('thiếu mảnh');
+          parts.push(part);
+        }
+        const u = URL.createObjectURL(new Blob(parts, { type: media.mime }));
+        objectUrls.set(media.id, u);
+        return u;
+      }
+    } catch {
+      // Dữ liệu lưu bị hỏng: xóa để tải lại, tạm thời phát trực tiếp qua mạng
+      cachedIds.delete(media.id);
+      deleteChunks(media.id, media.size).then(() => setTimeout(syncCache, 1000));
+    }
     return media.url;
   }
 

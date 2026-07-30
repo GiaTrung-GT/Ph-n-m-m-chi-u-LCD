@@ -195,16 +195,30 @@ h2 { font-size: 17px; margin-bottom: 14px; }
 }
 .settings-row input[type="number"] { width: 56px; }
 
+.playlists { display: flex; flex-direction: column; gap: 10px; }
 .playlist {
-  border-top: 1px solid var(--border);
-  padding-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
+.playlist.active-list { border-color: var(--accent); }
 .playlist-title {
-  font-size: 12px;
-  color: var(--muted);
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 600;
+}
+.playlist-title .schedule { color: var(--muted); font-weight: 400; font-size: 12px; }
+.today-badge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 10px;
+  padding: 2px 8px;
+  margin-left: 6px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -250,7 +264,50 @@ h2 { font-size: 17px; margin-bottom: 14px; }
 /* ------------------------- Thư viện ------------------------- */
 
 .upload-btn { font-size: 14px; }
-.section-actions { display: flex; gap: 8px; align-items: center; }
+.section-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.upload-group-label {
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.upload-group-label select {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.filter-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.filter-tabs button {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.filter-tabs button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.screen-card details {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+.screen-card summary {
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+.screen-card details[open] summary { margin-bottom: 8px; }
 
 .drop-zone {
   border: 2px dashed var(--border);

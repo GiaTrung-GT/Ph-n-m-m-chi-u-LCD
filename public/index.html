@@ -25,12 +25,23 @@
       <div class="section-head">
         <h2>Thư viện nội dung</h2>
         <div class="section-actions">
+          <label class="upload-group-label">Nhóm khi tải lên:
+            <select id="uploadGroup">
+              <option value="vi">🇻🇳 Tiếng Việt (T2–T5 & cuối tuần)</option>
+              <option value="en">🇬🇧 Tiếng Anh (Thứ 6)</option>
+            </select>
+          </label>
           <button class="btn btn-danger" id="deleteAllBtn" title="Xóa toàn bộ video/ảnh và làm trống playlist của mọi màn hình">🗑️ Xóa tất cả</button>
           <label class="btn btn-primary upload-btn">
             ⬆️ Tải video / ảnh lên
             <input type="file" id="fileInput" multiple accept="video/*,image/*" hidden>
           </label>
         </div>
+      </div>
+      <div class="filter-tabs" id="filterTabs">
+        <button data-f="all" class="active">Tất cả</button>
+        <button data-f="vi">🇻🇳 Tiếng Việt</button>
+        <button data-f="en">🇬🇧 Tiếng Anh</button>
       </div>
       <div id="uploadProgress" class="upload-progress hidden">
         <div class="bar"><div id="uploadBar" class="bar-fill"></div></div>

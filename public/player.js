@@ -22,13 +22,27 @@
 
   let ws = null;
   let screen = null;          // cấu hình màn hình từ server
-  let playlist = [];          // danh sách media đang phát vòng lặp
+  let playlists = { vi: [], en: [] }; // 2 bộ nội dung theo lịch tuần
+  let activeMode = null;      // 'vi' (T2-T5 & cuối tuần) | 'en' (Thứ 6)
+  let playlist = [];          // bộ đang phát (theo ngày hôm nay)
   let index = -1;             // vị trí đang phát trong playlist
   let imageTimer = null;
   let stopped = false;        // đang ở trạng thái "dừng" do lệnh stop
   let interrupt = null;       // media đang phát chen ngang (lệnh "chiếu ngay")
   let showSeq = 0;            // chống race khi chuyển nội dung nhanh
   let playState = 'idle';
+
+  // Thứ 6 chiếu Tiếng Anh, các ngày còn lại chiếu Tiếng Việt
+  function currentMode() {
+    return new Date().getDay() === 5 ? 'en' : 'vi';
+  }
+
+  // Cả 2 bộ đều được tải về thiết bị để đổi lịch được ngay cả khi mất mạng
+  function unionMedia() {
+    const seen = new Map();
+    for (const m of [...playlists.vi, ...playlists.en]) seen.set(m.id, m);
+    return [...seen.values()];
+  }
 
   // ------------------------------------------------------------------
   // Kho lưu trữ ngoại tuyến (IndexedDB) — hoạt động cả trên HTTP LAN
@@ -170,8 +184,10 @@
     if (syncing) return;
     syncing = true;
     try {
-      // Dọn file (và mảnh tải dở) không còn thuộc playlist
-      const wanted = new Set(playlist.map((m) => m.id));
+      // Tải cả 2 bộ (Tiếng Việt + Tiếng Anh) để đổi lịch được khi mất mạng;
+      // dọn file (và mảnh tải dở) không còn thuộc bộ nào
+      const all = unionMedia();
+      const wanted = new Set(all.map((m) => m.id));
       for (const k of await store.keys().catch(() => [])) {
         const baseId = String(k).split(':')[0];
         if (!wanted.has(baseId)) {
@@ -181,7 +197,7 @@
           if (u) { URL.revokeObjectURL(u); objectUrls.delete(baseId); }
         }
       }
-      for (const media of playlist) {
+      for (const media of all) {
         if (cachedIds.has(media.id)) continue;
         try {
           downloadInfo = { name: media.name, percent: 0 };
@@ -201,7 +217,7 @@
     downloadInfo = null;
     syncing = false;
     reportStatus();
-    if (playlist.some((m) => !cachedIds.has(m.id))) setTimeout(syncCache, 30000);
+    if (unionMedia().some((m) => !cachedIds.has(m.id))) setTimeout(syncCache, 30000);
   }
 
   function fmtMB(bytes) {
@@ -242,10 +258,17 @@
 
   // Lưu cấu hình để mở lại trang vẫn phát đúng dù chưa nối được máy chủ
   function saveLocal() {
-    try { localStorage.setItem(`cfg-${screenId}`, JSON.stringify({ screen, playlist })); } catch {}
+    try { localStorage.setItem(`cfg-${screenId}`, JSON.stringify({ screen, playlists })); } catch {}
   }
   function loadLocal() {
-    try { return JSON.parse(localStorage.getItem(`cfg-${screenId}`)); } catch { return null; }
+    try {
+      const saved = JSON.parse(localStorage.getItem(`cfg-${screenId}`));
+      if (saved && !saved.playlists) {
+        // dữ liệu bản cũ chỉ có 1 playlist -> coi là bộ Tiếng Việt
+        saved.playlists = { vi: saved.playlist || [], en: [] };
+      }
+      return saved;
+    } catch { return null; }
   }
 
   // ------------------------------------------------------------------
@@ -265,7 +288,7 @@
     ws.onmessage = (ev) => {
       let msg;
       try { msg = JSON.parse(ev.data); } catch { return; }
-      if (msg.type === 'config') applyConfig(msg.screen, msg.playlist);
+      if (msg.type === 'config') applyConfig(msg.screen, msg.playlists);
       if (msg.type === 'command') handleCommand(msg);
     };
 
@@ -282,18 +305,20 @@
     if (state) playState = state;
     if (!ws || ws.readyState !== 1) return;
     const current = interrupt || playlist[index] || null;
+    const all = unionMedia();
     ws.send(JSON.stringify({
       type: 'status',
       nowPlaying: current && playState !== 'idle'
         ? { mediaId: current.id, name: current.name, state: playState }
         : null,
       cache: {
-        cached: playlist.filter((m) => cachedIds.has(m.id)).length,
-        total: playlist.length,
+        cached: all.filter((m) => cachedIds.has(m.id)).length,
+        total: all.length,
         downloading: downloadInfo,
         error: downloadError,
       },
       storage: storageInfo,
+      mode: activeMode,
     }));
   }
 
@@ -301,12 +326,16 @@
   // Áp dụng cấu hình
   // ------------------------------------------------------------------
 
-  function applyConfig(newScreen, newPlaylist) {
-    const playlistChanged = JSON.stringify(playlist.map((m) => m.id)) !==
-      JSON.stringify(newPlaylist.map((m) => m.id));
+  function applyConfig(newScreen, newPlaylists) {
+    const mode = currentMode();
+    const newActive = (newPlaylists && newPlaylists[mode]) || [];
+    const playlistChanged = activeMode !== mode ||
+      JSON.stringify(playlist.map((m) => m.id)) !== JSON.stringify(newActive.map((m) => m.id));
 
     screen = newScreen;
-    playlist = newPlaylist;
+    playlists = newPlaylists || { vi: [], en: [] };
+    activeMode = mode;
+    playlist = newActive;
     screenName.textContent = screen.name;
     saveLocal();
     syncCache();
@@ -353,7 +382,9 @@
     interrupt = null;
     if (stopped) return;
     if (!playlist.length) {
-      showStandby('Chưa có nội dung nào được gán cho màn hình này.');
+      showStandby(activeMode === 'en'
+        ? 'Hôm nay Thứ 6 chiếu Tiếng Anh — chưa có nội dung trong bộ Tiếng Anh.'
+        : 'Chưa có nội dung nào được gán cho màn hình này.');
       return;
     }
     index = (index + 1) % playlist.length;
@@ -494,7 +525,16 @@
 
   initCache().then(() => {
     const saved = loadLocal();
-    if (saved && saved.screen) applyConfig(saved.screen, saved.playlist || []);
+    if (saved && saved.screen) applyConfig(saved.screen, saved.playlists);
     connect();
   });
+
+  // Kiểm tra mỗi phút: sang ngày mới (ví dụ qua Thứ 6) thì tự đổi bộ nội dung,
+  // hoạt động cả khi đang mất mạng vì cả 2 bộ đã lưu sẵn trong thiết bị
+  setInterval(() => {
+    if (screen && activeMode && currentMode() !== activeMode) {
+      applyConfig(screen, playlists);
+      reportStatus();
+    }
+  }, 60000);
 })();

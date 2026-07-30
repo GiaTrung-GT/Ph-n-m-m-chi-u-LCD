@@ -22,12 +22,12 @@ Một cửa sổ đen hiện ra và trình duyệt **tự mở trang quản tr�
                       │   (chạy server này)      │
                       │   Trang quản trị :3000   │
                       └───────────┬──────────────┘
-                                  │  Wi-Fi / mạng LAN
-        ┌──────────────┬──────────┴────┬───────────────┐
-        ▼              ▼               ▼               ▼
-   LCD 1 (dọc)    LCD 2 (ngang)      TV 1            TV 2
-   1080x1920      1920x1080       1920x1080        1920x1080
-   mở /screen/s1  mở /screen/s2   mở /screen/s3    mở /screen/s4
+                                  │  Wi-Fi / Internet
+                     ┌────────────┴────────────┐
+                     ▼                         ▼
+                   TV 1                      TV 2
+                1920x1080                 1920x1080
+              mở /screen/s1             mở /screen/s2
 ```
 
 - Máy tính của bạn chạy **server trung tâm** kèm **trang quản trị**: tải video/ảnh lên, xếp playlist cho từng màn hình, bấm phát / dừng / chuyển nội dung.
@@ -67,10 +67,8 @@ Mở trình duyệt của màn hình/TV và truy cập (thay `192.168.1.10` bằ
 
 | Màn hình | Đường link |
 |---|---|
-| LCD 1 — dọc 1080x1920 | `http://192.168.1.10:3000/screen/s1` |
-| LCD 2 — ngang 1920x1080 | `http://192.168.1.10:3000/screen/s2` |
-| TV 1 — 1920x1080 | `http://192.168.1.10:3000/screen/s3` |
-| TV 2 — 1920x1080 | `http://192.168.1.10:3000/screen/s4` |
+| TV 1 — 1920x1080 | `http://192.168.1.10:3000/screen/s1` (gõ tắt: `/s1`) |
+| TV 2 — 1920x1080 | `http://192.168.1.10:3000/screen/s2` (gõ tắt: `/s2`) |
 
 Khi màn hình đã kết nối, chấm tròn trên trang quản trị chuyển **xanh** và mọi nội dung bạn gán sẽ tự phát, lặp vòng liên tục.
 
@@ -78,13 +76,14 @@ Khi màn hình đã kết nối, chấm tròn trên trang quản trị chuyển 
 
 ## Tính năng
 
-- **4 màn hình độc lập** — mỗi màn hình một playlist riêng, hoặc bấm "📡 Tất cả" để phát cùng nội dung trên cả 4.
-- **Điều khiển tức thì**: phát ▶️, tạm dừng ⏸️, dừng ⏹️, chuyển bài ⏮️⏭️, tải lại 🔄, và "📺 Chiếu ngay" để chen một nội dung bất kỳ.
+- **Lịch chiếu theo tuần, tự động**: mỗi màn hình có 2 bộ nội dung — 🇻🇳 **Tiếng Việt** chiếu Thứ 2 – Thứ 5 & cuối tuần, 🇬🇧 **Tiếng Anh** chiếu Thứ 6. Màn hình tự đổi bộ đúng ngày (kiểm tra mỗi phút), kể cả khi đang mất mạng vì **cả 2 bộ đều được tải sẵn** vào thiết bị.
+- **Phân nhóm ngay khi tải lên**: chọn nhóm 🇻🇳/🇬🇧 trước khi tải file, thư viện có bộ lọc theo nhóm, đổi nhóm được từng file.
 - **Playlist lặp vòng**: video phát hết tự chuyển bài; ảnh hiển thị theo số giây cài đặt.
-- **Màn hình dọc**: chọn "Xoay 90°/270°" cho màn hình LCD dọc nếu thiết bị phát xuất hình ngang.
-- **Chế độ hiển thị**: Vừa khung / Phủ kín / Kéo giãn cho từng màn hình.
-- **Trạng thái thời gian thực**: biết màn hình nào đang online, đang phát nội dung gì.
-- **Tự phục hồi**: màn hình mất Wi-Fi sẽ tự kết nối lại; playlist được lưu trên máy tính (`data/db.json`), khởi động lại server không mất dữ liệu.
+- **Trạng thái thời gian thực**: màn hình nào online, đang chiếu bộ nào, phát nội dung gì, đã lưu về thiết bị bao nhiêu.
+- **Cài đặt riêng từng màn hình** (mục ⚙️ thu gọn): hiển thị vừa khung/phủ kín/kéo giãn, xoay 90°/180°/270°, thời lượng ảnh, tắt/bật tiếng.
+- **Tự phục hồi**: màn hình mất Wi-Fi sẽ tự kết nối lại; dữ liệu lưu trên máy tính (`data/db.json`), khởi động lại server không mất gì.
+
+> Lịch mặc định: Thứ 6 chiếu bộ Tiếng Anh, mọi ngày còn lại (kể cả Thứ 7, Chủ nhật) chiếu bộ Tiếng Việt.
 
 ## Màn hình ở xa, không chung Wi-Fi với máy tính
 

@@ -72,12 +72,14 @@ function requireAdmin(req, res, next) {
 // Cơ sở dữ liệu (file JSON đơn giản)
 // ---------------------------------------------------------------------------
 
+// Mỗi màn hình có 2 playlist theo lịch tuần:
+//   vi = Tiếng Việt, chiếu Thứ 2 - Thứ 5 và cuối tuần
+//   en = Tiếng Anh, chiếu Thứ 6
+// Màn hình tự chọn playlist theo ngày thực tế (kể cả khi mất mạng).
 const DEFAULT_DB = {
   screens: [
-    { id: 's1', name: 'LCD 1 - Dọc (1080x1920)', fit: 'contain', rotate: 0, imageDuration: 10, muted: true, playlist: [] },
-    { id: 's2', name: 'LCD 2 - Ngang (1920x1080)', fit: 'contain', rotate: 0, imageDuration: 10, muted: true, playlist: [] },
-    { id: 's3', name: 'TV 1 (1920x1080)', fit: 'contain', rotate: 0, imageDuration: 10, muted: true, playlist: [] },
-    { id: 's4', name: 'TV 2 (1920x1080)', fit: 'contain', rotate: 0, imageDuration: 10, muted: true, playlist: [] },
+    { id: 's1', name: 'TV 1 (1920x1080)', fit: 'contain', rotate: 0, imageDuration: 10, muted: true, playlists: { vi: [], en: [] } },
+    { id: 's2', name: 'TV 2 (1920x1080)', fit: 'contain', rotate: 0, imageDuration: 10, muted: true, playlists: { vi: [], en: [] } },
   ],
   media: [],
 };
@@ -86,6 +88,14 @@ function loadDb() {
   try {
     const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
     if (!Array.isArray(db.screens) || !Array.isArray(db.media)) throw new Error('db hỏng');
+    // Nâng cấp dữ liệu bản cũ: playlist đơn -> 2 playlist theo lịch
+    for (const s of db.screens) {
+      if (!s.playlists) s.playlists = { vi: Array.isArray(s.playlist) ? s.playlist : [], en: [] };
+      delete s.playlist;
+    }
+    for (const m of db.media) {
+      if (!m.group) m.group = 'vi';
+    }
     return db;
   } catch {
     return JSON.parse(JSON.stringify(DEFAULT_DB));
@@ -182,6 +192,7 @@ function publicState() {
       nowPlaying: (playerStatus.get(s.id) || {}).nowPlaying || null,
       cache: (playerStatus.get(s.id) || {}).cache || null,
       storage: (playerStatus.get(s.id) || {}).storage || null,
+      mode: (playerStatus.get(s.id) || {}).mode || null,
     })),
     media: db.media,
     addresses: lanAddresses(),
@@ -196,14 +207,18 @@ app.post('/api/screens/:id', requireAdmin, (req, res) => {
   const screen = findScreen(req.params.id);
   if (!screen) return res.status(404).json({ error: 'Không tìm thấy màn hình' });
 
-  const { name, fit, rotate, imageDuration, muted, playlist } = req.body;
+  const { name, fit, rotate, imageDuration, muted, playlists } = req.body;
   if (typeof name === 'string' && name.trim()) screen.name = name.trim();
   if (['contain', 'cover', 'fill'].includes(fit)) screen.fit = fit;
   if ([0, 90, 180, 270].includes(rotate)) screen.rotate = rotate;
   if (Number.isFinite(imageDuration) && imageDuration >= 1) screen.imageDuration = Math.round(imageDuration);
   if (typeof muted === 'boolean') screen.muted = muted;
-  if (Array.isArray(playlist)) {
-    screen.playlist = playlist.filter((id) => db.media.some((m) => m.id === id));
+  if (playlists && typeof playlists === 'object') {
+    for (const key of ['vi', 'en']) {
+      if (Array.isArray(playlists[key])) {
+        screen.playlists[key] = playlists[key].filter((id) => db.media.some((m) => m.id === id));
+      }
+    }
   }
 
   saveDb();
@@ -232,11 +247,13 @@ app.post('/api/screens/:id/command', requireAdmin, (req, res) => {
 });
 
 app.post('/api/media', requireAdmin, upload.array('files', 20), (req, res) => {
+  const group = req.body.group === 'en' ? 'en' : 'vi';
   const added = (req.files || []).map((f) => ({
     id: path.parse(f.filename).name,
     name: Buffer.from(f.originalname, 'latin1').toString('utf8'),
     type: f.mimetype.startsWith('video/') ? 'video' : 'image',
     mime: f.mimetype,
+    group,
     url: `/media/${f.filename}`,
     size: f.size,
     uploadedAt: new Date().toISOString(),
@@ -247,6 +264,17 @@ app.post('/api/media', requireAdmin, upload.array('files', 20), (req, res) => {
   res.json({ ok: true, added });
 });
 
+// Chuyển một nội dung sang nhóm khác (Tiếng Việt <-> Tiếng Anh)
+app.post('/api/media/:id', requireAdmin, (req, res) => {
+  const media = db.media.find((m) => m.id === req.params.id);
+  if (!media) return res.status(404).json({ error: 'Không tìm thấy nội dung' });
+  if (!['vi', 'en'].includes(req.body.group)) return res.status(400).json({ error: 'Nhóm không hợp lệ' });
+  media.group = req.body.group;
+  saveDb();
+  broadcastState();
+  res.json({ ok: true });
+});
+
 // Xóa toàn bộ thư viện: gỡ mọi file và làm trống playlist của tất cả màn hình
 // (các màn hình nhận playlist trống sẽ tự dọn nội dung đã lưu trong thiết bị)
 app.delete('/api/media', requireAdmin, (req, res) => {
@@ -255,7 +283,7 @@ app.delete('/api/media', requireAdmin, (req, res) => {
   }
   db.media = [];
   for (const screen of db.screens) {
-    screen.playlist = [];
+    screen.playlists = { vi: [], en: [] };
     pushConfig(screen.id);
   }
   saveDb();
@@ -271,9 +299,13 @@ app.delete('/api/media/:id', requireAdmin, (req, res) => {
   fs.unlink(path.join(UPLOAD_DIR, path.basename(media.url)), () => {});
 
   for (const screen of db.screens) {
-    const before = screen.playlist.length;
-    screen.playlist = screen.playlist.filter((id) => id !== media.id);
-    if (screen.playlist.length !== before) pushConfig(screen.id);
+    let changed = false;
+    for (const key of ['vi', 'en']) {
+      const before = screen.playlists[key].length;
+      screen.playlists[key] = screen.playlists[key].filter((id) => id !== media.id);
+      if (screen.playlists[key].length !== before) changed = true;
+    }
+    if (changed) pushConfig(screen.id);
   }
 
   saveDb();
@@ -318,10 +350,12 @@ function broadcastState() {
 function pushConfig(screenId) {
   const screen = findScreen(screenId);
   if (!screen) return;
-  const playlist = screen.playlist
-    .map((id) => db.media.find((m) => m.id === id))
-    .filter(Boolean);
-  sendToPlayers(screenId, { type: 'config', screen, playlist });
+  const resolve = (ids) => ids.map((id) => db.media.find((m) => m.id === id)).filter(Boolean);
+  sendToPlayers(screenId, {
+    type: 'config',
+    screen,
+    playlists: { vi: resolve(screen.playlists.vi), en: resolve(screen.playlists.en) },
+  });
 }
 
 wss.on('connection', (ws, req) => {
@@ -358,6 +392,7 @@ wss.on('connection', (ws, req) => {
         nowPlaying: msg.nowPlaying || null,
         cache: msg.cache || null,
         storage: msg.storage || null,
+        mode: msg.mode || null,
       });
       broadcastState();
     }

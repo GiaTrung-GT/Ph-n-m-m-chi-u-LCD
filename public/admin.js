@@ -1,9 +1,16 @@
 /**
- * Trang quản trị: quản lý 4 màn hình, thư viện nội dung và playlist.
+ * Trang quản trị: quản lý màn hình, thư viện nội dung và 2 bộ playlist
+ * theo lịch tuần (Tiếng Việt: T2-T5 & cuối tuần, Tiếng Anh: Thứ 6).
  * Nhận cập nhật thời gian thực (online/offline, đang phát gì) qua WebSocket.
  */
 (() => {
   let state = { screens: [], media: [], addresses: [], port: 3000 };
+  let mediaFilter = 'all'; // bộ lọc thư viện: all | vi | en
+
+  const GROUPS = {
+    vi: { flag: '🇻🇳', label: 'Tiếng Việt', schedule: 'Thứ 2 – Thứ 5 & cuối tuần' },
+    en: { flag: '🇬🇧', label: 'Tiếng Anh', schedule: 'Thứ 6' },
+  };
 
   const $ = (sel) => document.querySelector(sel);
   const screensEl = $('#screens');
@@ -50,15 +57,13 @@
   }
 
   const updateScreen = (id, body) => api(`/api/screens/${id}`, { method: 'POST', body });
-  const sendCommand = (id, action, mediaId) =>
-    api(`/api/screens/${id}/command`, { method: 'POST', body: { action, mediaId } });
+  const sendCommand = (id, action) =>
+    api(`/api/screens/${id}/command`, { method: 'POST', body: { action } });
 
   // ------------------------------------------------------------------
   // Hiển thị
   // ------------------------------------------------------------------
 
-  // Máy tính có thể có nhiều địa chỉ (Wi-Fi nội bộ, Tailscale...) — cho phép
-  // chọn địa chỉ dùng để tạo link màn hình, lưu lựa chọn vào trình duyệt
   function addrLabel(a) {
     if (a.startsWith('100.')) return `${a} (Tailscale — cho màn hình ở xa)`;
     return `${a} (Wi-Fi / mạng nội bộ)`;
@@ -72,6 +77,10 @@
 
   function baseUrl() {
     return `http://${chosenAddress()}:${state.port}`;
+  }
+
+  function todayMode(screen) {
+    return screen.mode || (new Date().getDay() === 5 ? 'en' : 'vi');
   }
 
   function render() {
@@ -111,13 +120,19 @@
   }
 
   function renderScreens() {
+    // Giữ trạng thái đang mở của các mục "Cài đặt" khi vẽ lại
+    const openSettings = new Set(
+      [...screensEl.querySelectorAll('details[open]')].map((d) => d.dataset.sid),
+    );
     screensEl.innerHTML = '';
+
     for (const screen of state.screens) {
       const card = document.createElement('div');
       card.className = 'screen-card';
 
       const url = `${baseUrl()}/screen/${screen.id}`;
       const np = screen.nowPlaying;
+      const mode = todayMode(screen);
       const npText = !screen.online
         ? 'Màn hình chưa kết nối'
         : np
@@ -139,96 +154,56 @@
           cacheText += `<br><span class="cache-error">⚠️ ${esc(cache.error)}</span>`;
         }
       }
-
       // Chẩn đoán kho lưu trữ của thiết bị: đầy / không giữ được lâu dài
       const st = screen.storage;
-      if (screen.online && st && st.quota) {
-        cacheText += `<br>📦 Kho lưu của thiết bị: đã dùng ${fmtSize(st.usage)} / ${fmtSize(st.quota)}`;
-        if (st.persisted === false) {
-          cacheText += `<br><span class="cache-error">⚠️ Thiết bị chưa cam kết giữ dữ liệu lâu dài — nếu tắt/bật lại phải tải lại video, hãy dọn bớt bộ nhớ thiết bị và tránh xóa dữ liệu trình duyệt</span>`;
-        }
+      if (screen.online && st && st.quota && st.persisted === false) {
+        cacheText += `<br><span class="cache-error">⚠️ Thiết bị chưa cam kết giữ dữ liệu lâu dài (kho: ${fmtSize(st.usage)}/${fmtSize(st.quota)}) — nếu tắt/bật phải tải lại, hãy dọn bớt bộ nhớ thiết bị</span>`;
       }
 
       card.innerHTML = `
         <div class="screen-head">
           <span class="status-dot ${screen.online ? 'on' : ''}" title="${screen.online ? 'Đang kết nối' : 'Chưa kết nối'}"></span>
           <input class="screen-name" value="${esc(screen.name)}" title="Nhấp để đổi tên">
+          <button class="btn btn-sm" data-cmd="reload" title="Tải lại trang trên màn hình">🔄</button>
         </div>
         <div class="screen-url">
           <code>${esc(url)}</code>
           <button class="btn btn-sm copy-btn" title="Sao chép liên kết">📋</button>
         </div>
-        <div class="now-playing">${npText}${cacheText}</div>
-        <div class="controls">
-          <button class="btn btn-sm" data-cmd="play" title="Phát">▶️</button>
-          <button class="btn btn-sm" data-cmd="pause" title="Tạm dừng">⏸️</button>
-          <button class="btn btn-sm" data-cmd="stop" title="Dừng">⏹️</button>
-          <button class="btn btn-sm" data-cmd="prev" title="Nội dung trước">⏮️</button>
-          <button class="btn btn-sm" data-cmd="next" title="Nội dung tiếp">⏭️</button>
-          <button class="btn btn-sm" data-cmd="reload" title="Tải lại trang màn hình">🔄</button>
+        <div class="now-playing">
+          Hôm nay chiếu: <strong>${GROUPS[mode].flag} ${GROUPS[mode].label}</strong><br>
+          ${npText}${cacheText}
         </div>
-        <div class="settings-row">
-          <label>Hiển thị
-            <select class="fit-select">
-              <option value="contain" ${screen.fit === 'contain' ? 'selected' : ''}>Vừa khung</option>
-              <option value="cover" ${screen.fit === 'cover' ? 'selected' : ''}>Phủ kín</option>
-              <option value="fill" ${screen.fit === 'fill' ? 'selected' : ''}>Kéo giãn</option>
-            </select>
-          </label>
-          <label>Xoay
-            <select class="rotate-select">
-              ${[0, 90, 180, 270].map((r) =>
-                `<option value="${r}" ${screen.rotate === r ? 'selected' : ''}>${r}°</option>`).join('')}
-            </select>
-          </label>
-          <label>Ảnh (giây)
-            <input type="number" class="dur-input" min="1" value="${screen.imageDuration}">
-          </label>
-          <label><input type="checkbox" class="mute-check" ${screen.muted ? 'checked' : ''}> Tắt tiếng</label>
-        </div>
-        <div class="playlist">
-          <div class="playlist-title">Playlist (phát lặp vòng)</div>
-          <div class="playlist-items"></div>
-          <div class="add-row">
-            <select class="media-select">
-              <option value="">— Chọn nội dung để thêm —</option>
-              ${state.media.map((m) =>
-                `<option value="${m.id}">${m.type === 'video' ? '🎬' : '🖼️'} ${esc(m.name)}</option>`).join('')}
-            </select>
-            <button class="btn btn-sm add-btn">➕ Thêm</button>
+        <div class="playlists"></div>
+        <details data-sid="${screen.id}" ${openSettings.has(screen.id) ? 'open' : ''}>
+          <summary>⚙️ Cài đặt hiển thị</summary>
+          <div class="settings-row">
+            <label>Hiển thị
+              <select class="fit-select">
+                <option value="contain" ${screen.fit === 'contain' ? 'selected' : ''}>Vừa khung</option>
+                <option value="cover" ${screen.fit === 'cover' ? 'selected' : ''}>Phủ kín</option>
+                <option value="fill" ${screen.fit === 'fill' ? 'selected' : ''}>Kéo giãn</option>
+              </select>
+            </label>
+            <label>Xoay
+              <select class="rotate-select">
+                ${[0, 90, 180, 270].map((r) =>
+                  `<option value="${r}" ${screen.rotate === r ? 'selected' : ''}>${r}°</option>`).join('')}
+              </select>
+            </label>
+            <label>Ảnh (giây)
+              <input type="number" class="dur-input" min="1" value="${screen.imageDuration}">
+            </label>
+            <label><input type="checkbox" class="mute-check" ${screen.muted ? 'checked' : ''}> Tắt tiếng</label>
           </div>
-        </div>
+        </details>
       `;
 
-      // Playlist items
-      const itemsEl = card.querySelector('.playlist-items');
-      if (!screen.playlist.length) {
-        itemsEl.innerHTML = '<div class="playlist-empty">Chưa có nội dung</div>';
+      // 2 bộ playlist theo lịch
+      const listsEl = card.querySelector('.playlists');
+      for (const key of ['vi', 'en']) {
+        listsEl.appendChild(buildPlaylistBlock(screen, key, mode));
       }
-      screen.playlist.forEach((mediaId, i) => {
-        const media = state.media.find((m) => m.id === mediaId);
-        if (!media) return;
-        const row = document.createElement('div');
-        row.className = 'playlist-item';
-        row.innerHTML = `
-          <span class="pl-type">${media.type === 'video' ? '🎬' : '🖼️'}</span>
-          <span class="pl-name">${esc(media.name)}</span>
-          <button title="Chiếu ngay trên màn hình này">📺</button>
-          <button title="Chuyển lên">⬆️</button>
-          <button title="Chuyển xuống">⬇️</button>
-          <button title="Bỏ khỏi playlist">✖️</button>
-        `;
-        const [playNowBtn, upBtn, downBtn, delBtn] = row.querySelectorAll('button');
-        playNowBtn.onclick = () => sendCommand(screen.id, 'playNow', media.id);
-        upBtn.onclick = () => movePlaylistItem(screen, i, -1);
-        downBtn.onclick = () => movePlaylistItem(screen, i, 1);
-        delBtn.onclick = () => {
-          const pl = screen.playlist.slice();
-          pl.splice(i, 1);
-          updateScreen(screen.id, { playlist: pl });
-        };
-        itemsEl.appendChild(row);
-      });
 
       // Sự kiện
       const nameInput = card.querySelector('.screen-name');
@@ -241,12 +216,10 @@
           .catch(() => toast(url));
       };
 
-      card.querySelectorAll('[data-cmd]').forEach((btn) => {
-        btn.onclick = async () => {
-          const r = await sendCommand(screen.id, btn.dataset.cmd);
-          if (!r.delivered) toast('Màn hình chưa kết nối — hãy mở liên kết trên màn hình trước');
-        };
-      });
+      card.querySelector('[data-cmd="reload"]').onclick = async () => {
+        const r = await sendCommand(screen.id, 'reload');
+        if (!r.delivered) toast('Màn hình chưa kết nối — hãy mở liên kết trên màn hình trước');
+      };
 
       card.querySelector('.fit-select').onchange = (e) =>
         updateScreen(screen.id, { fit: e.target.value }).then(() => e.target.blur());
@@ -257,31 +230,86 @@
       card.querySelector('.mute-check').onchange = (e) =>
         updateScreen(screen.id, { muted: e.target.checked });
 
-      card.querySelector('.add-btn').onclick = () => {
-        const select = card.querySelector('.media-select');
-        if (!select.value) return;
-        updateScreen(screen.id, { playlist: [...screen.playlist, select.value] });
-      };
-
       screensEl.appendChild(card);
     }
   }
 
-  function movePlaylistItem(screen, i, delta) {
-    const pl = screen.playlist.slice();
-    const j = i + delta;
-    if (j < 0 || j >= pl.length) return;
-    [pl[i], pl[j]] = [pl[j], pl[i]];
-    updateScreen(screen.id, { playlist: pl });
+  // Một khối playlist (Tiếng Việt hoặc Tiếng Anh) của một màn hình
+  function buildPlaylistBlock(screen, key, activeToday) {
+    const g = GROUPS[key];
+    const ids = (screen.playlists && screen.playlists[key]) || [];
+    const block = document.createElement('div');
+    block.className = `playlist ${key === activeToday ? 'active-list' : ''}`;
+    block.innerHTML = `
+      <div class="playlist-title">
+        ${g.flag} ${g.label} <span class="schedule">(${g.schedule})</span>
+        ${key === activeToday ? '<span class="today-badge">đang chiếu hôm nay</span>' : ''}
+      </div>
+      <div class="playlist-items"></div>
+      <div class="add-row">
+        <select class="media-select">
+          <option value="">— Thêm nội dung ${g.label} —</option>
+          ${state.media.filter((m) => (m.group || 'vi') === key).map((m) =>
+            `<option value="${m.id}">${m.type === 'video' ? '🎬' : '🖼️'} ${esc(m.name)}</option>`).join('')}
+        </select>
+        <button class="btn btn-sm add-btn">➕</button>
+      </div>
+    `;
+
+    const setLists = (newIds) =>
+      updateScreen(screen.id, { playlists: { [key]: newIds } });
+
+    const itemsEl = block.querySelector('.playlist-items');
+    if (!ids.length) {
+      itemsEl.innerHTML = '<div class="playlist-empty">Chưa có nội dung</div>';
+    }
+    ids.forEach((mediaId, i) => {
+      const media = state.media.find((m) => m.id === mediaId);
+      if (!media) return;
+      const row = document.createElement('div');
+      row.className = 'playlist-item';
+      row.innerHTML = `
+        <span class="pl-type">${media.type === 'video' ? '🎬' : '🖼️'}</span>
+        <span class="pl-name">${esc(media.name)}</span>
+        <button title="Chuyển lên">⬆️</button>
+        <button title="Chuyển xuống">⬇️</button>
+        <button title="Bỏ khỏi playlist">✖️</button>
+      `;
+      const [upBtn, downBtn, delBtn] = row.querySelectorAll('button');
+      upBtn.onclick = () => { if (i > 0) { const p = ids.slice(); [p[i - 1], p[i]] = [p[i], p[i - 1]]; setLists(p); } };
+      downBtn.onclick = () => { if (i < ids.length - 1) { const p = ids.slice(); [p[i], p[i + 1]] = [p[i + 1], p[i]]; setLists(p); } };
+      delBtn.onclick = () => { const p = ids.slice(); p.splice(i, 1); setLists(p); };
+      itemsEl.appendChild(row);
+    });
+
+    block.querySelector('.add-btn').onclick = () => {
+      const select = block.querySelector('.media-select');
+      if (!select.value) return;
+      setLists([...ids, select.value]);
+    };
+
+    return block;
   }
 
+  // ------------------------------------------------------------------
+  // Thư viện nội dung
+  // ------------------------------------------------------------------
+
   function renderMedia() {
+    // Bộ lọc nhóm
+    document.querySelectorAll('#filterTabs button').forEach((b) => {
+      b.classList.toggle('active', b.dataset.f === mediaFilter);
+    });
+
     mediaGrid.innerHTML = '';
-    if (!state.media.length) {
-      mediaGrid.innerHTML = '<div class="media-empty">Chưa có nội dung nào. Hãy tải video hoặc ảnh lên.</div>';
+    const list = state.media.filter((m) => mediaFilter === 'all' || (m.group || 'vi') === mediaFilter);
+    if (!list.length) {
+      mediaGrid.innerHTML = '<div class="media-empty">Chưa có nội dung nào. Hãy chọn nhóm rồi tải video hoặc ảnh lên.</div>';
       return;
     }
-    for (const media of state.media) {
+    for (const media of list) {
+      const g = GROUPS[media.group || 'vi'];
+      const other = (media.group || 'vi') === 'vi' ? 'en' : 'vi';
       const card = document.createElement('div');
       card.className = 'media-card';
       const thumb = media.type === 'video'
@@ -291,21 +319,16 @@
         ${thumb}
         <div class="media-info">
           <div class="media-name" title="${esc(media.name)}">${esc(media.name)}</div>
-          <div class="media-meta">${media.type === 'video' ? 'Video' : 'Ảnh'} · ${fmtSize(media.size)}</div>
+          <div class="media-meta">${g.flag} ${g.label} · ${fmtSize(media.size)}</div>
           <div class="media-actions">
-            <button class="btn btn-sm all-btn" title="Thêm vào playlist của cả 4 màn hình">📡 Tất cả</button>
+            <button class="btn btn-sm group-btn" title="Chuyển sang nhóm ${GROUPS[other].label}">${GROUPS[other].flag} Đổi nhóm</button>
             <button class="btn btn-sm btn-danger del-btn" title="Xóa file">🗑️</button>
           </div>
         </div>
       `;
-      card.querySelector('.all-btn').onclick = async () => {
-        for (const screen of state.screens) {
-          if (!screen.playlist.includes(media.id)) {
-            await updateScreen(screen.id, { playlist: [...screen.playlist, media.id] });
-          }
-        }
-        toast('Đã thêm vào playlist của tất cả màn hình');
-      };
+      card.querySelector('.group-btn').onclick = () =>
+        api(`/api/media/${media.id}`, { method: 'POST', body: { group: other } })
+          .then(() => toast(`Đã chuyển sang nhóm ${GROUPS[other].flag} ${GROUPS[other].label}`));
       card.querySelector('.del-btn').onclick = () => {
         if (confirm(`Xóa "${media.name}"? File sẽ bị gỡ khỏi mọi playlist.`)) {
           api(`/api/media/${media.id}`, { method: 'DELETE' });
@@ -315,6 +338,10 @@
     }
   }
 
+  document.querySelectorAll('#filterTabs button').forEach((b) => {
+    b.onclick = () => { mediaFilter = b.dataset.f; renderMedia(); };
+  });
+
   // ------------------------------------------------------------------
   // Tải file lên
   // ------------------------------------------------------------------
@@ -322,6 +349,7 @@
   function uploadFiles(files) {
     if (!files.length) return;
     const form = new FormData();
+    form.append('group', $('#uploadGroup').value);
     for (const f of files) form.append('files', f);
 
     const progress = $('#uploadProgress');

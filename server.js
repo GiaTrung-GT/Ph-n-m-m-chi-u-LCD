@@ -181,6 +181,7 @@ function publicState() {
       online: playersOf(s.id).size > 0,
       nowPlaying: (playerStatus.get(s.id) || {}).nowPlaying || null,
       cache: (playerStatus.get(s.id) || {}).cache || null,
+      storage: (playerStatus.get(s.id) || {}).storage || null,
     })),
     media: db.media,
     addresses: lanAddresses(),
@@ -340,6 +341,7 @@ wss.on('connection', (ws, req) => {
       playerStatus.set(ws.screenId, {
         nowPlaying: msg.nowPlaying || null,
         cache: msg.cache || null,
+        storage: msg.storage || null,
       });
       broadcastState();
     }

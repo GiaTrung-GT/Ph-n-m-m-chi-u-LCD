@@ -148,6 +148,23 @@ Lưu ý: nếu thiết bị trong thang **bị mất điện và khởi động 
 - **Âm thanh**: trình duyệt thường chặn tự phát có tiếng; mặc định video phát ở chế độ tắt tiếng. Muốn có tiếng: bỏ chọn "Tắt tiếng" trên trang quản trị và chạm một lần vào màn hình đó.
 - **Định dạng video** nên dùng **MP4 (H.264)** — mọi trình duyệt/TV đều phát được.
 
+## Xử lý sự cố thường gặp
+
+**Video không có tiếng dù đã bỏ "Tắt tiếng"**
+Trình duyệt chặn video tự phát có tiếng cho đến khi có người chạm/bấm nút một lần trên trang. Khi bị chặn, màn hình sẽ hiện dòng nhắc *"🔊 Chạm vào màn hình hoặc bấm OK trên điều khiển một lần để bật âm thanh"* — chỉ cần làm theo đúng một lần sau mỗi lần mở trang. Nếu vẫn không có tiếng: video của bạn có thể dùng chuẩn âm thanh TV không đọc được — hãy xuất video **MP4 (H.264 + AAC)**.
+
+**Video phát giật, không mượt**
+- Video quá nặng so với sức giải mã của thiết bị: xuất lại ở **1080p, H.264, khoảng 5–8 Mbps** (tránh 4K/H.265 trên Android box giá rẻ).
+- Thiết bị đang bận tải các file khác về ngầm — đợi đến khi trang quản trị hiện 💾 đủ x/x rồi kiểm tra lại.
+- Android box yếu (RAM 1GB) thường giật với mọi video nặng — box RAM 2GB trở lên chạy tốt hơn hẳn.
+
+**Tắt TV bật lại thì phải tải lại video từ đầu**
+Nguyên nhân: trình duyệt trên TV/box **tự xóa dữ liệu đã lưu** — thường vì bộ nhớ thiết bị gần đầy, hoặc trình duyệt được đặt chế độ tự dọn/ẩn danh. Trang quản trị hiện dòng **📦 Kho lưu của thiết bị** cho từng màn hình: nếu kèm cảnh báo ⚠️ "chưa cam kết giữ dữ liệu lâu dài" thì:
+- Gỡ bớt ứng dụng/file không dùng trên box để **chừa trống ít nhất gấp đôi** tổng dung lượng video;
+- Không dùng chế độ ẩn danh/khách của trình duyệt; không bấm "xóa dữ liệu duyệt web";
+- Dùng **Fully Kiosk Browser** thay trình duyệt thường — ổn định nhất cho máy chạy 24/7;
+- Nén video nhỏ lại (1080p H.264) để tổng dung lượng thấp hơn nhiều so với chỗ trống.
+
 ## Cấu trúc dự án
 
 ```

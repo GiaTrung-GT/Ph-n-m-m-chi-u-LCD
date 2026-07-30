@@ -140,6 +140,15 @@
         }
       }
 
+      // Chẩn đoán kho lưu trữ của thiết bị: đầy / không giữ được lâu dài
+      const st = screen.storage;
+      if (screen.online && st && st.quota) {
+        cacheText += `<br>📦 Kho lưu của thiết bị: đã dùng ${fmtSize(st.usage)} / ${fmtSize(st.quota)}`;
+        if (st.persisted === false) {
+          cacheText += `<br><span class="cache-error">⚠️ Thiết bị chưa cam kết giữ dữ liệu lâu dài — nếu tắt/bật lại phải tải lại video, hãy dọn bớt bộ nhớ thiết bị và tránh xóa dữ liệu trình duyệt</span>`;
+        }
+      }
+
       card.innerHTML = `
         <div class="screen-head">
           <span class="status-dot ${screen.online ? 'on' : ''}" title="${screen.online ? 'Đang kết nối' : 'Chưa kết nối'}"></span>

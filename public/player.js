@@ -18,6 +18,7 @@
   const connDot = document.getElementById('connDot');
   const screenName = document.getElementById('screenName');
   const standbyMsg = document.getElementById('standbyMsg');
+  const soundHint = document.getElementById('soundHint');
 
   let ws = null;
   let screen = null;          // cấu hình màn hình từ server
@@ -80,10 +81,25 @@
   //   '<id>:done'     = số mảnh, đánh dấu đã tải đủ
   const CHUNK = 4 * 1024 * 1024;
 
+  // Thông tin kho lưu trữ của trình duyệt — gửi lên trang quản trị để chẩn
+  // đoán vì sao TV phải tải lại nội dung sau khi tắt/bật (trình duyệt tự
+  // xóa dữ liệu khi thiết bị gần đầy bộ nhớ)
+  let storageInfo = null;
+
+  async function updateStorageInfo() {
+    try {
+      if (!navigator.storage) return;
+      const persisted = navigator.storage.persisted ? await navigator.storage.persisted() : null;
+      const est = navigator.storage.estimate ? await navigator.storage.estimate() : {};
+      storageInfo = { persisted, usage: est.usage || 0, quota: est.quota || 0 };
+    } catch {}
+  }
+
   async function initCache() {
     try {
       // Xin trình duyệt giữ dữ liệu lâu dài, không tự xóa khi đầy bộ nhớ
-      if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+      if (navigator.storage && navigator.storage.persist) await navigator.storage.persist().catch(() => {});
+      await updateStorageInfo();
       for (const k of await store.keys()) {
         const key = String(k);
         if (!key.includes(':')) cachedIds.add(key);
@@ -173,6 +189,7 @@
           await downloadMedia(media);
           cachedIds.add(media.id);
           downloadError = null;
+          updateStorageInfo();
         } catch (e) {
           // Ghi rõ lý do để hiện trên trang quản trị, rồi tải file kế tiếp
           downloadError = `${media.name}: ${e.message === 'Failed to fetch' ? 'mất kết nối khi đang tải, sẽ tự thử lại' : e.message}`;
@@ -276,6 +293,7 @@
         downloading: downloadInfo,
         error: downloadError,
       },
+      storage: storageInfo,
     }));
   }
 
@@ -296,7 +314,7 @@
     stage.className = screen.rotate ? `rot${screen.rotate}` : '';
     video.style.objectFit = screen.fit;
     image.style.objectFit = screen.fit;
-    video.muted = screen.muted;
+    applyMuteSetting();
 
     if (playlistChanged || (!currentVisible() && !stopped)) {
       index = -1;
@@ -363,9 +381,13 @@
       video.muted = screen ? screen.muted : true;
       video.onended = playNext;
       video.onerror = () => { imageTimer = setTimeout(playNext, 3000); };
-      video.play().catch(() => {
-        // Trình duyệt chặn autoplay có tiếng: phát lại ở chế độ tắt tiếng
+      video.play().then(() => {
+        if (!video.muted) hideSoundHint();
+      }).catch(() => {
+        // Trình duyệt chặn tự phát có tiếng khi chưa có thao tác người dùng:
+        // phát tạm ở chế độ tắt tiếng và nhắc người dùng chạm một lần
         video.muted = true;
+        if (screen && !screen.muted) showSoundHint();
         video.play().catch(() => { imageTimer = setTimeout(playNext, 3000); });
       });
     } else {
@@ -425,12 +447,46 @@
     }
   }
 
-  // Nhấp/chạm vào màn hình để bật toàn màn hình (cần thao tác người dùng)
-  document.addEventListener('click', () => {
+  // ------------------------------------------------------------------
+  // Âm thanh: trình duyệt chỉ cho phát có tiếng sau khi người dùng đã
+  // chạm/bấm phím một lần trên trang. Bắt mọi loại thao tác (chạm, chuột,
+  // nút OK/mũi tên trên điều khiển TV) để mở khóa âm thanh.
+  // ------------------------------------------------------------------
+
+  function showSoundHint() { soundHint.classList.add('show'); }
+  function hideSoundHint() { soundHint.classList.remove('show'); }
+
+  // Áp dụng cài đặt tiếng cho video đang phát. Bỏ tắt tiếng bằng lệnh từ xa
+  // có thể bị trình duyệt chặn (chưa có thao tác người dùng) — khi đó phát
+  // tiếp không tiếng và hiện nhắc chạm màn hình.
+  function applyMuteSetting() {
+    if (!screen) return;
+    video.muted = screen.muted;
+    if (screen.muted) { hideSoundHint(); return; }
+    if (video.style.display === 'block') {
+      video.play().then(hideSoundHint).catch(() => {
+        video.muted = true;
+        showSoundHint();
+        video.play().catch(() => {});
+      });
+    }
+  }
+
+  function onUserGesture() {
+    hideSoundHint();
+    // Bật lại tiếng nếu cấu hình yêu cầu có tiếng mà video đang bị ép câm
+    if (video.style.display === 'block' && screen && !screen.muted && video.muted) {
+      video.muted = false;
+      video.play().catch(() => {});
+    }
+    // Nhân tiện bật toàn màn hình (cũng cần thao tác người dùng)
     if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
       document.documentElement.requestFullscreen().catch(() => {});
     }
-  });
+  }
+  document.addEventListener('click', onUserGesture);
+  document.addEventListener('touchstart', onUserGesture);
+  document.addEventListener('keydown', onUserGesture);
 
   // ------------------------------------------------------------------
   // Khởi động: phát ngay nội dung đã lưu, rồi mới kết nối máy chủ

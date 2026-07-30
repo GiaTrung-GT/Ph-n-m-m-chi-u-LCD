@@ -47,6 +47,22 @@
     }
     #standby .dot.on { background: #2c5; }
     #standby.hidden { display: none; }
+
+    #soundHint {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.75);
+      color: #fff;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 20px;
+      padding: 14px 22px;
+      border-radius: 12px;
+      display: none;
+      z-index: 10;
+    }
+    #soundHint.show { display: block; }
   </style>
 </head>
 <body>
@@ -59,6 +75,7 @@
     <h1 id="screenName">Màn hình trình chiếu</h1>
     <p id="standbyMsg">Đang kết nối tới máy chủ...</p>
   </div>
+  <div id="soundHint">🔊 Chạm vào màn hình hoặc bấm OK trên điều khiển một lần để bật âm thanh</div>
   <script src="/player.js"></script>
 </body>
 </html>

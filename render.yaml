@@ -18,3 +18,27 @@ services:
       name: du-lieu-media
       mountPath: /opt/render/project/src/data
       sizeGB: 10
+
+  # Công cụ ghép mặt nhân viên vào ấn phẩm (thư mục cong-cu-ghep-mat/).
+  # Khi tạo, Render sẽ hỏi GEMINI_API_KEY (lấy tại aistudio.google.com/apikey)
+  # và ADMIN_PASSWORD (mật khẩu trang /admin).
+  - type: web
+    name: cong-cu-ghep-mat
+    runtime: node
+    plan: starter
+    rootDir: cong-cu-ghep-mat
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash-image
+      - key: LIMIT_PER_HOUR
+        value: "10"
+    disk:
+      name: du-lieu-an-pham
+      mountPath: /opt/render/project/src/cong-cu-ghep-mat/data
+      sizeGB: 1

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quản trị ấn phẩm</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <h1>Quản trị ấn phẩm</h1>
+  <p class="sub">Tải ảnh mẫu cố định một lần, sau đó gửi link trang nhân viên cho mọi người.</p>
+
+  <div class="status" id="status"></div>
+
+  <div class="card">
+    <h2>Link gửi cho nhân viên</h2>
+    <div class="row" style="margin-top:0">
+      <input type="text" id="link" readonly style="flex:1;min-width:200px">
+      <button class="secondary" id="copy">Sao chép</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>1. Ảnh mẫu (Ảnh số 1)</h2>
+      <img class="preview" id="tplPreview" alt="" hidden>
+      <p class="muted" id="tplEmpty">Chưa có ảnh mẫu.</p>
+      <div class="row">
+        <label class="btn">
+          Chọn ảnh mẫu…
+          <input type="file" id="tplFile" accept="image/jpeg,image/png,image/webp" hidden>
+        </label>
+      </div>
+      <p class="muted">Tỉ lệ khung AI xuất ra: <strong id="ratio">1:1</strong> (tự nhận theo ảnh mẫu)</p>
+    </div>
+
+    <div class="card">
+      <h2>2. Lớp chữ &amp; logo (không bắt buộc)</h2>
+      <p class="muted">
+        AI hay làm méo chữ tiếng Việt. Xuất từ Photoshop một file <strong>PNG nền trong suốt</strong>,
+        cùng kích thước ảnh mẫu, chỉ chứa chữ, checklist, logo (tắt layer ảnh nền và người).
+        Công cụ sẽ đè lớp này lên ảnh AI nên chữ luôn đúng 100%.
+      </p>
+      <img class="preview" id="ovPreview" alt="" hidden style="background:repeating-conic-gradient(#eee 0 25%,#fff 0 50%) 0 0/20px 20px">
+      <div class="row">
+        <label class="btn">
+          Chọn file PNG…
+          <input type="file" id="ovFile" accept="image/png" hidden>
+        </label>
+        <button class="secondary" id="ovDel" hidden>Xóa lớp chữ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3. Cài đặt</h2>
+    <label class="field" for="title">Tiêu đề trang nhân viên</label>
+    <input type="text" id="title">
+    <label class="field" for="code">Mã truy cập cho nhân viên (để trống = ai có link cũng dùng được)</label>
+    <input type="text" id="code" placeholder="Ví dụ: skyzen2026">
+    <label class="field" for="prompt">Prompt gửi AI <span class="muted">(<code>{{gioi_tinh}}</code> tự thay bằng Nam/Nữ theo lựa chọn của nhân viên)</span></label>
+    <textarea id="prompt"></textarea>
+    <div class="row">
+      <button id="save">Lưu cài đặt</button>
+      <button class="secondary" id="resetPrompt">Khôi phục prompt mặc định</button>
+    </div>
+    <div class="msg" id="msg"></div>
+  </div>
+</main>
+<script src="/admin.js"></script>
+</body>
+</html>

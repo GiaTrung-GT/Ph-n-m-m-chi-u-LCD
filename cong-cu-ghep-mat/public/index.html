@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tạo ấn phẩm cá nhân</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <h1 id="title">Tạo ấn phẩm cá nhân</h1>
+  <p class="sub">Tải ảnh chân dung của bạn lên, AI sẽ ghép khuôn mặt bạn vào ấn phẩm của công ty.</p>
+
+  <div class="card" id="notReady" hidden>
+    <strong>Công cụ chưa sẵn sàng.</strong>
+    <p class="muted" id="notReadyMsg"></p>
+  </div>
+
+  <div class="grid" id="app">
+    <div class="card">
+      <h2>1. Ảnh chân dung của bạn</h2>
+      <label class="drop" id="drop">
+        <input type="file" id="file" accept="image/jpeg,image/png,image/webp" hidden>
+        <div id="dropText">Bấm để chọn ảnh<br><span class="muted">hoặc kéo thả ảnh vào đây</span></div>
+        <img id="portraitPreview" alt="" hidden>
+      </label>
+      <ul class="tips">
+        <li>Ảnh rõ mặt, nhìn thẳng hoặc nghiêng nhẹ</li>
+        <li>Đủ sáng, không đeo kính râm, không che mặt</li>
+      </ul>
+
+      <h2 style="margin-top:20px">2. Giới tính</h2>
+      <div class="seg">
+        <label><input type="radio" name="gender" value="Nam"><span>Nam</span></label>
+        <label><input type="radio" name="gender" value="Nữ"><span>Nữ</span></label>
+      </div>
+
+      <div id="codeBox" hidden>
+        <label class="field" for="code">3. Mã truy cập</label>
+        <input type="password" id="code" placeholder="Mã do phòng Marketing cung cấp" autocomplete="off">
+      </div>
+
+      <div style="margin-top:20px">
+        <button class="big" id="go" disabled>✨ Tạo ảnh của tôi</button>
+      </div>
+      <div class="msg" id="msg"></div>
+    </div>
+
+    <div class="card">
+      <h2 id="rightTitle">Ấn phẩm mẫu</h2>
+      <img class="preview" id="result" alt="Ấn phẩm">
+      <p class="muted" id="waitNote" hidden>AI đang ghép ảnh, thường mất 15–60 giây. Vui lòng không đóng trang…</p>
+      <div class="row" id="actions" hidden>
+        <a class="btn" id="download" download="an-pham.jpg">⬇ Tải ảnh về</a>
+        <button class="secondary" id="again">↻ Tạo lại</button>
+      </div>
+      <p class="muted" id="againNote" hidden>Chưa ưng? Bấm “Tạo lại”, mỗi lần AI sẽ cho một kết quả khác.</p>
+    </div>
+  </div>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

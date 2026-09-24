@@ -20,7 +20,7 @@ const TEMPLATE_FILE = path.join(DATA_DIR, 'template');
 const OVERLAY_FILE = path.join(DATA_DIR, 'overlay.png');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-image';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-image';
 // Mật khẩu trang quản trị (người thiết kế mẫu).
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 // Số lượt tạo ảnh tối đa mỗi giờ cho 1 máy/1 mạng — tránh bị dùng tốn tiền API.

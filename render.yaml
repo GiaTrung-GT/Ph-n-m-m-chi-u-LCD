@@ -35,7 +35,7 @@ services:
       - key: ADMIN_PASSWORD
         sync: false
       - key: GEMINI_MODEL
-        value: gemini-2.5-flash-image
+        value: gemini-3.1-flash-image
       - key: LIMIT_PER_HOUR
         value: "10"
     disk:

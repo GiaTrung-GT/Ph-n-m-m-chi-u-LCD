@@ -9,7 +9,7 @@ Bạn tải **ảnh mẫu** (ví dụ poster "KPI Có Nhà") lên một lần. N
 ## 1. Lấy khóa AI (tạo khóa miễn phí, trả tiền theo lượt dùng)
 
 1. Vào <https://aistudio.google.com/apikey>, đăng nhập Gmail công ty, bấm **Create API key**.
-2. Bật thanh toán (Billing) cho project đó. Mỗi ảnh tốn khoảng **1.000 VNĐ** (0,039 USD với `gemini-2.5-flash-image`).
+2. **Bắt buộc bật thanh toán (Billing)** cho project đó: bấm **Set up billing** cạnh khóa trong AI Studio. Gói miễn phí của Google cho 0 lượt tạo ảnh, và gói Google AI Pro/One (app Gemini) **không** tính cho API. Mỗi ảnh tốn khoảng 1.000–2.000 VNĐ.
 3. Giữ kín khóa này. Không gửi cho nhân viên.
 
 ## 2. Đưa lên Internet (Render.com)
@@ -53,6 +53,6 @@ GEMINI_API_KEY=... ADMIN_PASSWORD=123 npm start
 |---|---|---|
 | `GEMINI_API_KEY` | Khóa Google AI Studio | (bắt buộc) |
 | `ADMIN_PASSWORD` | Mật khẩu trang `/admin` | trống = không cần mật khẩu |
-| `GEMINI_MODEL` | Model tạo ảnh. Có thể dùng `gemini-3-pro-image-preview` (Nano Banana Pro): giữ mặt tốt hơn nhưng đắt hơn | `gemini-2.5-flash-image` |
+| `GEMINI_MODEL` | Model tạo ảnh. Có thể dùng `gemini-3-pro-image` (Nano Banana Pro): giữ mặt tốt hơn nhưng đắt hơn | `gemini-3.1-flash-image` |
 | `LIMIT_PER_HOUR` | Số ảnh tối đa mỗi người/giờ | `10` |
 | `MOCK` | `1` = chạy thử không gọi AI | tắt |
